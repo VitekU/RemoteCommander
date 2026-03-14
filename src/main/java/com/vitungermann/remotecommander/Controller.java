@@ -1,6 +1,5 @@
 package com.vitungermann.remotecommander;
 
-import com.github.dockerjava.api.model.Container;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,7 +17,7 @@ public class Controller {
     }
 
     @PostMapping("/createjob")
-    public String createJob(@RequestBody CreateJobRequest request) {
+    public String createJob(@RequestBody CreateJobRequest request) throws InterruptedException {
         jobManager.createJob(request.command(), request.cpuCount(), request.memorySize());
         return jobManager.currentJob.toString();
     }
