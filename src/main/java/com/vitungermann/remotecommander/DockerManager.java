@@ -12,8 +12,8 @@ import com.github.dockerjava.core.DefaultDockerClientConfig;
 class DockerManager {
     public final DockerClient dockerClient;
 
-    public DockerManager(JobManager jobManager) {
-        DockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder().withDockerHost("tcp://192.168.0.40").build();
+    public DockerManager() {
+        DockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder().withDockerHost("tcp://192.168.0.40:2375").build();
         DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder().dockerHost(config.getDockerHost()).build();
 
         dockerClient = DockerClientImpl.getInstance(config, httpClient);
