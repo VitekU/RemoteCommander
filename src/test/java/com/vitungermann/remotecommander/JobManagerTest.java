@@ -1,6 +1,5 @@
 package com.vitungermann.remotecommander;
 
-import com.vitungermann.remotecommander.helperstructs.JobStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
