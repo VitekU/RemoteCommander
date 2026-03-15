@@ -1,7 +1,6 @@
 package com.vitungermann.remotecommander;
 
-
-import java.util.UUID;
+import com.vitungermann.remotecommander.helperstructs.JobStatus;
 
 public class Job {
     public String jobID;
@@ -18,6 +17,7 @@ public class Job {
         this.cpuCount = cpuCount;
         this.memorySize = memorySize;
         this.status = jobStatus;
+        this.output = "";
     }
 
     @Override

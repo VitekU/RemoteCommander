@@ -5,6 +5,9 @@ import com.github.dockerjava.api.command.ExecCreateCmdResponse;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.RestartPolicy;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
+import com.vitungermann.remotecommander.helperstructs.JobResponse;
+import com.vitungermann.remotecommander.helperstructs.JobStatus;
+import com.vitungermann.remotecommander.helperstructs.StartJobResponse;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -17,7 +20,7 @@ class JobManager {
 
     private final Queue<String> jobQueue;
     private final HashMap<String, Job> allJobs;
-    public String currentJobID;
+    private String currentJobID;
 
 
     public Job enqueueJob(String command, long cpuCount, long memorySize) {
@@ -38,7 +41,7 @@ class JobManager {
     }
 
     private void executeJob() throws InterruptedException {
-        JobResponse response = startContainer();
+        StartJobResponse response = startContainer();
         if (!response.isReady()) {
             return;
         }
@@ -60,15 +63,15 @@ class JobManager {
         allJobs.get(currentJobID).output = stdout.toString();
     }
 
-    private JobResponse startContainer() {
+    private StartJobResponse startContainer() {
         if (currentJobID != null && allJobs.get(currentJobID).status == JobStatus.IN_PROGRESS) {
-            return new JobResponse(false, "There is another job in progress.");
+            return new StartJobResponse(false, "There is another job in progress.");
         }
 
         currentJobID = jobQueue.poll();
 
         if (currentJobID == null) {
-            return new JobResponse(false, "You have no jobs in queue right now.");
+            return new StartJobResponse(false, "You have no jobs in queue right now.");
         }
 
         HostConfig hostConfig = HostConfig.newHostConfig().withCpuCount(allJobs.get(currentJobID).cpuCount).withMemory(allJobs.get(currentJobID).memorySize * 1024 * 1024L).withMemorySwap(allJobs.get(currentJobID).memorySize * 1024 * 1024L).withRestartPolicy(RestartPolicy.noRestart())
@@ -79,10 +82,21 @@ class JobManager {
 
         allJobs.get(currentJobID).containerID = container.getId();
         allJobs.get(currentJobID).status = JobStatus.IN_PROGRESS;
-        return new JobResponse(true, "New container started successfully");
+        return new StartJobResponse(true, "New container started successfully");
     }
 
+    public List<JobResponse> getAllJobs() {
+        List<JobResponse> output = new ArrayList<>();
+        for (Job job : allJobs.values()) {
+            output.add(new JobResponse(job.jobID, job.command, job.status, job.output, job.cpuCount, job.memorySize));
+        }
+        return output;
+    }
 
+    public JobResponse getJob(String id) {
+        Job job = allJobs.get(id);
+        return new JobResponse(job.jobID, job.command, job.status, job.output, job.cpuCount, job.memorySize);
+    }
 
     JobManager(DockerManager dockerManager) {
         this.dockerManager = dockerManager;

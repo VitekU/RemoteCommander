@@ -1,4 +1,4 @@
-package com.vitungermann.remotecommander;
+package com.vitungermann.remotecommander.helperstructs;
 
 public enum JobStatus {
     QUEUED,
