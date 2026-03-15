@@ -7,7 +7,7 @@ import com.github.dockerjava.api.model.RestartPolicy;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
 import com.vitungermann.remotecommander.helperstructs.JobResponse;
 import com.vitungermann.remotecommander.helperstructs.JobStatus;
-import com.vitungermann.remotecommander.helperstructs.StartJobResponse;
+import com.vitungermann.remotecommander.helperstructs.JobOperationResponse;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -41,54 +41,76 @@ class JobManager {
     }
 
     private void executeJob() throws InterruptedException {
-        StartJobResponse response = startContainer();
-        if (!response.isReady()) {
+        JobOperationResponse response = startContainer();
+        if (!response.isSuccessful()) {
             return;
         }
-        executeCommand();
 
-        allJobs.get(currentJobID).status = JobStatus.FINISHED;
-        dockerManager.dockerClient.stopContainerCmd(allJobs.get(currentJobID).containerID).exec();
+        Job job = allJobs.get(currentJobID);
 
+        response = executeCommand();
+        job.operationResponses.add(response.message());
+
+        if (!response.isSuccessful()) {
+            job.status = JobStatus.FAILED;
+        }
+        else {
+            job.status = JobStatus.FINISHED;
+        }
+        dockerManager.dockerClient.stopContainerCmd(job.containerID).exec();
         currentJobID = null;
         executeJob();
     }
 
-    private void executeCommand() throws InterruptedException {
-        ExecCreateCmdResponse exec = dockerManager.dockerClient.execCreateCmd(allJobs.get(currentJobID).containerID).withAttachStdout(true).withAttachStderr(true).withCmd("sh", "-c", allJobs.get(currentJobID).command).exec();
-        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
-        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+    private JobOperationResponse executeCommand() {
+        try {
+            ExecCreateCmdResponse exec = dockerManager.dockerClient.execCreateCmd(allJobs.get(currentJobID).containerID).withAttachStdout(true).withAttachStderr(true).withCmd("sh", "-c", allJobs.get(currentJobID).command).exec();
+            ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+            ByteArrayOutputStream stderr = new ByteArrayOutputStream();
 
-        dockerManager.dockerClient.execStartCmd(exec.getId()).exec(new ExecStartResultCallback(stdout, stderr)).awaitCompletion();
-        allJobs.get(currentJobID).output = stdout.toString();
+            dockerManager.dockerClient.execStartCmd(exec.getId()).exec(new ExecStartResultCallback(stdout, stderr)).awaitCompletion();
+            allJobs.get(currentJobID).output = stdout.toString();
+
+            return new JobOperationResponse(true, "Command executed successfully.");
+        }
+        catch (Exception e) {
+            return new JobOperationResponse(false, "Command could not be executed: " + e.getMessage());
+        }
     }
 
-    private StartJobResponse startContainer() {
+    private JobOperationResponse startContainer() {
         if (currentJobID != null && allJobs.get(currentJobID).status == JobStatus.IN_PROGRESS) {
-            return new StartJobResponse(false, "There is another job in progress.");
+            return new JobOperationResponse(false, "There is another job in progress.");
         }
 
         currentJobID = jobQueue.poll();
 
         if (currentJobID == null) {
-            return new StartJobResponse(false, "You have no jobs in queue right now.");
+            return new JobOperationResponse(false, "You have no jobs in queue right now.");
         }
 
-        HostConfig hostConfig = HostConfig.newHostConfig().withCpuCount(allJobs.get(currentJobID).cpuCount).withMemory(allJobs.get(currentJobID).memorySize * 1024 * 1024L).withMemorySwap(allJobs.get(currentJobID).memorySize * 1024 * 1024L).withRestartPolicy(RestartPolicy.noRestart())
-                .withAutoRemove(true);
+        try {
 
-        CreateContainerResponse container = dockerManager.dockerClient.createContainerCmd("ubuntu").withName("executor-" + allJobs.get(currentJobID).jobID).withHostConfig(hostConfig).withCmd("sh", "-c", "sleep infinity").exec();
-        dockerManager.dockerClient.startContainerCmd(container.getId()).exec();
+            HostConfig hostConfig = HostConfig.newHostConfig().withCpuCount(allJobs.get(currentJobID).cpuCount).withMemory(allJobs.get(currentJobID).memorySize * 1024 * 1024L).withMemorySwap(allJobs.get(currentJobID).memorySize * 1024 * 1024L).withRestartPolicy(RestartPolicy.noRestart())
+                    .withAutoRemove(true);
 
-        allJobs.get(currentJobID).containerID = container.getId();
-        allJobs.get(currentJobID).status = JobStatus.IN_PROGRESS;
-        return new StartJobResponse(true, "New container started successfully");
+            CreateContainerResponse container = dockerManager.dockerClient.createContainerCmd("ubuntu").withName("executor-" + allJobs.get(currentJobID).jobID).withHostConfig(hostConfig).withCmd("sh", "-c", "sleep infinity").exec();
+            dockerManager.dockerClient.startContainerCmd(container.getId()).exec();
+
+            allJobs.get(currentJobID).containerID = container.getId();
+            allJobs.get(currentJobID).status = JobStatus.IN_PROGRESS;
+
+            return new JobOperationResponse(true, "New container started successfully.");
+        }
+        catch (Exception e) {
+            return new JobOperationResponse(false, "Container could not be started: " + e.getMessage());
+        }
     }
 
     public List<JobResponse> getAllJobs() {
         List<JobResponse> output = new ArrayList<>();
         for (Job job : allJobs.values()) {
-            output.add(new JobResponse(job.jobID, job.command, job.status, job.output, job.cpuCount, job.memorySize));
+            output.add(new JobResponse(job.jobID, job.command, job.status, job.output, job.cpuCount, job.memorySize, job.operationResponses));
         }
         return output;
     }
@@ -96,9 +118,9 @@ class JobManager {
     public JobResponse getJob(String id) {
         Job job = allJobs.get(id);
         if (job == null) {
-            return new JobResponse(null, null, null, null, 0,0);
+            return new JobResponse(null, null, null, null, 0,0, Collections.emptyList());
         }
-        return new JobResponse(job.jobID, job.command, job.status, job.output, job.cpuCount, job.memorySize);
+        return new JobResponse(job.jobID, job.command, job.status, job.output, job.cpuCount, job.memorySize, job.operationResponses);
     }
 
     JobManager(DockerManager dockerManager) {

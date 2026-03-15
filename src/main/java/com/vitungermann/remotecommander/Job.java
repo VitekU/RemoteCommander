@@ -2,6 +2,9 @@ package com.vitungermann.remotecommander;
 
 import com.vitungermann.remotecommander.helperstructs.JobStatus;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Job {
     public String jobID;
     public String containerID;
@@ -10,6 +13,7 @@ public class Job {
     public long memorySize;
     public JobStatus status;
     public String output;
+    public List<String> operationResponses;
 
     public Job(String jobID,String command, long cpuCount, long memorySize, JobStatus jobStatus) {
         this.jobID = jobID;
@@ -18,6 +22,7 @@ public class Job {
         this.memorySize = memorySize;
         this.status = jobStatus;
         this.output = "";
+        operationResponses = new ArrayList<>();
     }
 
     @Override
