@@ -19,6 +19,4 @@ class DockerManager {
 
         dockerClient = DockerClientImpl.getInstance(config, httpClient);
     }
-
-
 }
