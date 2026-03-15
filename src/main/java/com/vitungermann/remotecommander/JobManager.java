@@ -35,7 +35,6 @@ class JobManager {
         jobQueue.add(newJobID);
         allJobs.put(newJobID, newJob);
 
-
         CompletableFuture.runAsync(() -> {
             try {
                 executeJob();
