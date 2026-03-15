@@ -18,8 +18,8 @@ public class Controller {
 
     @PostMapping("/createjob")
     public String createJob(@RequestBody CreateJobRequest request) throws InterruptedException {
-        jobManager.createJob(request.command(), request.cpuCount(), request.memorySize());
-        return jobManager.currentJob.toString();
+        Job newJob = jobManager.enqueueJob(request.command(), request.cpuCount(), request.memorySize());
+        return newJob.jobID;
     }
 
     public Controller(JobManager jobManager) {
