@@ -8,6 +8,7 @@ import com.github.dockerjava.core.command.ExecStartResultCallback;
 import com.vitungermann.remotecommander.helperstructs.JobResponse;
 import com.vitungermann.remotecommander.helperstructs.JobStatus;
 import com.vitungermann.remotecommander.helperstructs.JobOperationResponse;
+import com.vitungermann.remotecommander.helperstructs.ServiceStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +23,8 @@ class JobManager {
     private final Queue<String> jobQueue;
     private final HashMap<String, Job> allJobs;
     private String currentJobID;
+
+    private ServiceStatus status;
 
     @Value("${docker.image}")
     private String dockerImage;
@@ -108,6 +111,7 @@ class JobManager {
         }
         catch (Exception e) {
             job.status = JobStatus.FAILED;
+            this.status = ServiceStatus.ERROR;
             return new JobOperationResponse(false, "Container could not be started: " + e.getMessage());
         }
     }
@@ -128,9 +132,14 @@ class JobManager {
         return new JobResponse(job.jobID, job.command, job.status, job.output, job.cpuCount, job.memorySize, job.operationResponses);
     }
 
+    public ServiceStatus getStatus() {
+        return status;
+    }
+
     JobManager(DockerManager dockerManager) {
         this.dockerManager = dockerManager;
         this.jobQueue = new LinkedList<>();
         this.allJobs = new HashMap<>();
+        this.status = ServiceStatus.OK;
     }
 }

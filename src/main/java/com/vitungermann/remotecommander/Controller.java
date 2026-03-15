@@ -2,6 +2,7 @@ package com.vitungermann.remotecommander;
 
 import com.vitungermann.remotecommander.helperstructs.CreateJobRequest;
 import com.vitungermann.remotecommander.helperstructs.JobResponse;
+import com.vitungermann.remotecommander.helperstructs.ServiceStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,8 +14,8 @@ public class Controller {
     private final JobManager jobManager;
 
     @GetMapping("/")
-    public String index() {
-        return "RemoteCommander here!";
+    public ServiceStatus index() {
+        return jobManager.getStatus();
     }
 
     @PostMapping("/create")
