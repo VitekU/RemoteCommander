@@ -1,7 +1,10 @@
 package com.vitungermann.remotecommander;
 
 
+import java.util.UUID;
+
 public class Job {
+    public String jobID;
     public String containerID;
     public String command;
     public long cpuCount;
@@ -15,10 +18,13 @@ public class Job {
         this.memorySize = memorySize;
         this.status = jobStatus;
 
+        this.jobID = UUID.randomUUID().toString();
+
+
     }
 
     @Override
     public String toString() {
-        return String.format("%s %s %d %d %s %s", this.containerID, this.command, this.cpuCount, this.memorySize, this.status, this.output);
+        return String.format("%s %s %d %d %s %s", this.jobID, this.command, this.cpuCount, this.memorySize, this.status, this.output);
     }
 }
