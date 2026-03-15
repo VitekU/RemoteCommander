@@ -12,15 +12,12 @@ public class Job {
     public JobStatus status;
     public String output;
 
-    public Job(String command, long cpuCount, long memorySize, JobStatus jobStatus) {
+    public Job(String jobID,String command, long cpuCount, long memorySize, JobStatus jobStatus) {
+        this.jobID = jobID;
         this.command = command;
         this.cpuCount = cpuCount;
         this.memorySize = memorySize;
         this.status = jobStatus;
-
-        this.jobID = UUID.randomUUID().toString();
-
-
     }
 
     @Override

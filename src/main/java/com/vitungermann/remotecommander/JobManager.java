@@ -15,13 +15,16 @@ import java.util.concurrent.CompletableFuture;
 class JobManager {
     private final DockerManager dockerManager;
 
-    private final Queue<Job> jobQueue;
+    private final Queue<String> jobQueue;
     private final HashMap<String, Job> allJobs;
-    public Job currentJob;
+    public String currentJobID;
+
 
     public Job enqueueJob(String command, long cpuCount, long memorySize) {
-        Job newJob = new Job(command, cpuCount, memorySize, JobStatus.QUEUED);
-        jobQueue.add(newJob);
+        String newJobID = UUID.randomUUID().toString();
+        Job newJob = new Job(newJobID, command, cpuCount, memorySize, JobStatus.QUEUED);
+        jobQueue.add(newJobID);
+        allJobs.put(newJobID, newJob);
 
 
         CompletableFuture.runAsync(() -> {
@@ -41,47 +44,45 @@ class JobManager {
         }
         executeCommand();
 
-        currentJob.status = JobStatus.FINISHED;
-        dockerManager.dockerClient.stopContainerCmd(currentJob.containerID).exec();
+        allJobs.get(currentJobID).status = JobStatus.FINISHED;
+        dockerManager.dockerClient.stopContainerCmd(allJobs.get(currentJobID).containerID).exec();
 
-        currentJob = null;
+        currentJobID = null;
         executeJob();
     }
 
     private void executeCommand() throws InterruptedException {
-        ExecCreateCmdResponse exec = dockerManager.dockerClient.execCreateCmd(currentJob.containerID).withAttachStdout(true).withAttachStderr(true).withCmd("sh", "-c", currentJob.command).exec();
+        ExecCreateCmdResponse exec = dockerManager.dockerClient.execCreateCmd(allJobs.get(currentJobID).containerID).withAttachStdout(true).withAttachStderr(true).withCmd("sh", "-c", allJobs.get(currentJobID).command).exec();
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
 
         dockerManager.dockerClient.execStartCmd(exec.getId()).exec(new ExecStartResultCallback(stdout, stderr)).awaitCompletion();
-        currentJob.output = stdout.toString();
+        allJobs.get(currentJobID).output = stdout.toString();
     }
 
     private JobResponse startContainer() {
-        if (currentJob != null && currentJob.status == JobStatus.IN_PROGRESS) {
+        if (currentJobID != null && allJobs.get(currentJobID).status == JobStatus.IN_PROGRESS) {
             return new JobResponse(false, "There is another job in progress.");
         }
 
-        currentJob = jobQueue.poll();
+        currentJobID = jobQueue.poll();
 
-        if (currentJob == null) {
+        if (currentJobID == null) {
             return new JobResponse(false, "You have no jobs in queue right now.");
         }
 
-        HostConfig hostConfig = HostConfig.newHostConfig().withCpuCount(currentJob.cpuCount).withMemory(currentJob.memorySize * 1024 * 1024L).withMemorySwap(currentJob.memorySize * 1024 * 1024L).withRestartPolicy(RestartPolicy.noRestart())
+        HostConfig hostConfig = HostConfig.newHostConfig().withCpuCount(allJobs.get(currentJobID).cpuCount).withMemory(allJobs.get(currentJobID).memorySize * 1024 * 1024L).withMemorySwap(allJobs.get(currentJobID).memorySize * 1024 * 1024L).withRestartPolicy(RestartPolicy.noRestart())
                 .withAutoRemove(true);
 
-        CreateContainerResponse container = dockerManager.dockerClient.createContainerCmd("ubuntu").withName("executor" + currentJob.jobID).withHostConfig(hostConfig).withCmd("sh", "-c", "sleep infinity").exec();
+        CreateContainerResponse container = dockerManager.dockerClient.createContainerCmd("ubuntu").withName("executor" + allJobs.get(currentJobID).jobID).withHostConfig(hostConfig).withCmd("sh", "-c", "sleep infinity").exec();
         dockerManager.dockerClient.startContainerCmd(container.getId()).exec();
 
-        currentJob.containerID = container.getId();
-        currentJob.status = JobStatus.IN_PROGRESS;
+        allJobs.get(currentJobID).containerID = container.getId();
+        allJobs.get(currentJobID).status = JobStatus.IN_PROGRESS;
         return new JobResponse(true, "New container started successfully");
     }
 
-    public Queue<Job> listJobs() {
-        return jobQueue;
-    }
+
 
     JobManager(DockerManager dockerManager) {
         this.dockerManager = dockerManager;
