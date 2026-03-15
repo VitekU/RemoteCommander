@@ -30,6 +30,11 @@ to pull the latest alpine image.
 
 Now in the service itself, we need to modify the `application.properties`. We have to change the URL of the computer where is running our docker daemon. If we decided to stick with alpine, we can leave the `docker.image` property untouched, otherwise, we would have to modify it so that it matches the image of our choosing.
 
+We can run the service simply from IDE or we can build and run it with `maven`. 
+```
+./mvnw package
+java -jar target/RemoteCommander-0.0.1-SNAPSHOT.jar
+```
 ## API Endpoints
 
 ### `GET /`
