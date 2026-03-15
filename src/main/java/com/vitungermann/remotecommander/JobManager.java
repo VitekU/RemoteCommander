@@ -8,6 +8,7 @@ import com.github.dockerjava.core.command.ExecStartResultCallback;
 import com.vitungermann.remotecommander.helperstructs.JobResponse;
 import com.vitungermann.remotecommander.helperstructs.JobStatus;
 import com.vitungermann.remotecommander.helperstructs.JobOperationResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -22,6 +23,8 @@ class JobManager {
     private final HashMap<String, Job> allJobs;
     private String currentJobID;
 
+    @Value("${docker.image}")
+    private String dockerImage;
 
     public Job enqueueJob(String command, long cpuCount, long memorySize) {
         String newJobID = UUID.randomUUID().toString();
@@ -89,20 +92,22 @@ class JobManager {
             return new JobOperationResponse(false, "You have no jobs in queue right now.");
         }
 
+        Job job = allJobs.get(currentJobID);
         try {
 
-            HostConfig hostConfig = HostConfig.newHostConfig().withCpuCount(allJobs.get(currentJobID).cpuCount).withMemory(allJobs.get(currentJobID).memorySize * 1024 * 1024L).withMemorySwap(allJobs.get(currentJobID).memorySize * 1024 * 1024L).withRestartPolicy(RestartPolicy.noRestart())
+            HostConfig hostConfig = HostConfig.newHostConfig().withCpuCount(job.cpuCount).withMemory(job.memorySize * 1024 * 1024L).withMemorySwap(job.memorySize * 1024 * 1024L).withRestartPolicy(RestartPolicy.noRestart())
                     .withAutoRemove(true);
 
-            CreateContainerResponse container = dockerManager.dockerClient.createContainerCmd("ubuntu").withName("executor-" + allJobs.get(currentJobID).jobID).withHostConfig(hostConfig).withCmd("sh", "-c", "sleep infinity").exec();
+            CreateContainerResponse container = dockerManager.dockerClient.createContainerCmd(dockerImage).withName("executor-" + job.jobID).withHostConfig(hostConfig).withCmd("sh", "-c", "sleep infinity").exec();
             dockerManager.dockerClient.startContainerCmd(container.getId()).exec();
 
-            allJobs.get(currentJobID).containerID = container.getId();
-            allJobs.get(currentJobID).status = JobStatus.IN_PROGRESS;
+            job.containerID = container.getId();
+            job.status = JobStatus.IN_PROGRESS;
 
             return new JobOperationResponse(true, "New container started successfully.");
         }
         catch (Exception e) {
+            job.status = JobStatus.FAILED;
             return new JobOperationResponse(false, "Container could not be started: " + e.getMessage());
         }
     }
