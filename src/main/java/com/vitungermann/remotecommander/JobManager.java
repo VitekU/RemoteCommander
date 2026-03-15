@@ -51,7 +51,7 @@ class JobManager {
         if (!response.isSuccessful()) {
             return;
         }
-
+        status = ServiceStatus.OK;
         Job job = allJobs.get(currentJobID);
 
         response = executeCommand();
@@ -134,6 +134,20 @@ class JobManager {
 
     public ServiceStatus getStatus() {
         return status;
+    }
+
+    public JobOperationResponse tryExecuteTopJob() {
+        if (status == ServiceStatus.OK) {
+            return new JobOperationResponse(false, "You can't interfere with the services job scheduling order - only if something has gone wrong with the container startup.");
+        }
+        CompletableFuture.runAsync(() -> {
+            try {
+                executeJob();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        return new JobOperationResponse(true, "Trying to start the container up - check the service status.");
     }
 
     JobManager(DockerManager dockerManager) {

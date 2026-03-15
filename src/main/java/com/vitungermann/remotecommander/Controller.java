@@ -1,6 +1,7 @@
 package com.vitungermann.remotecommander;
 
 import com.vitungermann.remotecommander.helperstructs.CreateJobRequest;
+import com.vitungermann.remotecommander.helperstructs.JobOperationResponse;
 import com.vitungermann.remotecommander.helperstructs.JobResponse;
 import com.vitungermann.remotecommander.helperstructs.ServiceStatus;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +34,9 @@ public class Controller {
     public JobResponse getJob(@RequestParam String id) {
         return jobManager.getJob(id);
     }
+
+    @GetMapping("/restart")
+    public JobOperationResponse restart() {return jobManager.tryExecuteTopJob();}
 
     private Controller(JobManager jobManager) {
         this.jobManager = jobManager;
