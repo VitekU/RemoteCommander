@@ -77,7 +77,7 @@ class JobManager {
         HostConfig hostConfig = HostConfig.newHostConfig().withCpuCount(allJobs.get(currentJobID).cpuCount).withMemory(allJobs.get(currentJobID).memorySize * 1024 * 1024L).withMemorySwap(allJobs.get(currentJobID).memorySize * 1024 * 1024L).withRestartPolicy(RestartPolicy.noRestart())
                 .withAutoRemove(true);
 
-        CreateContainerResponse container = dockerManager.dockerClient.createContainerCmd("ubuntu").withName("executor" + allJobs.get(currentJobID).jobID).withHostConfig(hostConfig).withCmd("sh", "-c", "sleep infinity").exec();
+        CreateContainerResponse container = dockerManager.dockerClient.createContainerCmd("ubuntu").withName("executor-" + allJobs.get(currentJobID).jobID).withHostConfig(hostConfig).withCmd("sh", "-c", "sleep infinity").exec();
         dockerManager.dockerClient.startContainerCmd(container.getId()).exec();
 
         allJobs.get(currentJobID).containerID = container.getId();
@@ -95,6 +95,9 @@ class JobManager {
 
     public JobResponse getJob(String id) {
         Job job = allJobs.get(id);
+        if (job == null) {
+            return new JobResponse(null, null, null, null, 0,0);
+        }
         return new JobResponse(job.jobID, job.command, job.status, job.output, job.cpuCount, job.memorySize);
     }
 

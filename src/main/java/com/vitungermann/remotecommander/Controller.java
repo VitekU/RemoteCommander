@@ -2,10 +2,7 @@ package com.vitungermann.remotecommander;
 
 import com.vitungermann.remotecommander.helperstructs.CreateJobRequest;
 import com.vitungermann.remotecommander.helperstructs.JobResponse;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -32,7 +29,7 @@ public class Controller {
     }
 
     @GetMapping("/getjob")
-    public JobResponse getJob(@RequestBody String id) {
+    public JobResponse getJob(@RequestParam String id) {
         return jobManager.getJob(id);
     }
 
